@@ -859,24 +859,23 @@ const menuItems = [
 
 // تصنيفات المنيو باللغتين للترجمة والتصفية
 const categories = [
-    { id: "all", name: "الكل" },
-    { id: "breakfast", name: "الفطور الصباحي" },
-    { id: "kubba", name: "كبب خاتون الموصل" },
-    { id: "lunch", name: "وجبات الغداء (دولمة)" },
-    { id: "maqluba", name: "مقلوبة لحم غنم" },
-    { id: "quzi_mandi", name: "قوزي ومندي" },
-    { id: "sandwiches", name: "السندويشات" },
-    { id: "cold_appetizers", name: "المقبلات الباردة" },
-    { id: "hot_appetizers", name: "المقبلات الحارة" },
-    { id: "diet_western", name: "غربية ودايت" },
-    { id: "mansaf", name: "المناسف ولائم" },
-    { id: "sweets", name: "الحلويات" },
-    { id: "drinks", name: "العصائر والمشروبات" }
+    { id: "breakfast", name: "الفطور الصباحي", icon: "fa-solid fa-mug-hot", bg: "rgba(214, 140, 45, 0.1)", border: "#d68c2d" },
+    { id: "kubba", name: "كبب خاتون الموصل", icon: "fa-solid fa-circle-dot", bg: "rgba(138, 37, 24, 0.1)", border: "#8a2518" },
+    { id: "lunch", name: "وجبات الغداء (دولمة)", icon: "fa-solid fa-fire-burner", bg: "rgba(73, 93, 67, 0.1)", border: "#495d43" },
+    { id: "maqluba", name: "مقلوبة لحم غنم", icon: "fa-solid fa-layer-group", bg: "rgba(213, 164, 82, 0.1)", border: "#d5a452" },
+    { id: "quzi_mandi", name: "قوزي ومندي", icon: "fa-solid fa-drumstick-bite", bg: "rgba(43, 35, 31, 0.1)", border: "#271e1a" },
+    { id: "sandwiches", name: "السندويشات والصاج", icon: "fa-solid fa-hamburger", bg: "rgba(186, 90, 32, 0.1)", border: "#ba5a20" },
+    { id: "cold_appetizers", name: "المقبلات الباردة", icon: "fa-solid fa-leaf", bg: "rgba(96, 124, 90, 0.1)", border: "#607c5a" },
+    { id: "hot_appetizers", name: "المقبلات الحارة", icon: "fa-solid fa-pepper-hot", bg: "rgba(178, 58, 43, 0.1)", border: "#b23a2b" },
+    { id: "diet_western", name: "وجبات غربية ودايت", icon: "fa-solid fa-box-archive", bg: "rgba(43, 112, 140, 0.1)", border: "#2b708c" },
+    { id: "mansaf", name: "المناسف والولائم", icon: "fa-solid fa-plate-wheat", bg: "rgba(140, 43, 121, 0.1)", border: "#8c2b79" },
+    { id: "sweets", name: "الحلويات", icon: "fa-solid fa-ice-cream", bg: "rgba(138, 37, 24, 0.1)", border: "#8a2518" },
+    { id: "drinks", name: "العصائر والمشروبات", icon: "fa-solid fa-glass-water", bg: "rgba(213, 164, 82, 0.1)", border: "#d5a452" }
 ];
 
 // حالة السلة والموقع
 let cart = [];
-let currentCategory = "all";
+let currentCategory = null; // null يعني عرض الأصناف الرئيسية أولاً
 let searchQuery = "";
 let isMusicPlaying = false;
 
@@ -888,7 +887,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // توليد أزرار الأصناف
     renderCategories();
     
-    // عرض وجبات الطعام
+    // عرض وجبات الطعام أو الأصناف
     renderMenu();
     
     // تفعيل البحث
@@ -911,70 +910,126 @@ function renderCategories() {
 
     container.innerHTML = categories.map(cat => `
         <button class="category-tab ${cat.id === currentCategory ? 'active' : ''}" 
-                onclick="filterCategory('${cat.id}')">
+                onclick="selectCategory('${cat.id}')">
             ${cat.name}
         </button>
     `).join('');
 }
 
-// تصفية الأصناف
-function filterCategory(catId) {
+// تصفية الأصناف واختيارها
+function selectCategory(catId) {
     currentCategory = catId;
     
     // تحديث التبويبات النشطة
     const tabs = document.querySelectorAll(".category-tab");
     tabs.forEach(tab => tab.classList.remove("active"));
     
-    // إيجاد التبويب الفعلي وتنشيطه
-    const activeTab = Array.from(tabs).find(t => t.innerText.trim() === categories.find(c => c.id === catId).name.trim());
-    if (activeTab) activeTab.classList.add("active");
+    if (catId !== null) {
+        const activeTab = Array.from(tabs).find(t => {
+            const cat = categories.find(c => c.id === catId);
+            return cat && t.innerText.trim() === cat.name.trim();
+        });
+        if (activeTab) activeTab.classList.add("active");
+    }
 
-    renderCategories(); // لإعادة التحميل الجمالي
+    renderCategories(); 
     renderMenu();
+    
+    // التمرير التلقائي لقسم المنيو عند اختيار صنف
+    const menuSec = document.getElementById("menu-section");
+    if (menuSec && catId !== null) {
+        menuSec.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
-// توليد الكروت وعرض وجبات الطعام في الشبكة
+// توليد الكروت وعرض وجبات الطعام في الشبكة أو الأصناف
 function renderMenu() {
     const grid = document.getElementById("menu-grid");
     const noResults = document.getElementById("no-results");
+    const tabsWrapper = document.querySelector(".categories-tabs-wrapper");
     if(!grid) return;
 
-    // تصفية الوجبات بناء على الصنف والبحث
-    const filtered = menuItems.filter(item => {
-        const matchesCategory = currentCategory === "all" || item.category === currentCategory;
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery) || 
-                              item.desc.toLowerCase().includes(searchQuery) ||
-                              item.tag.toLowerCase().includes(searchQuery);
-        return matchesCategory && matchesSearch;
-    });
+    // حالة البحث الفعال عالمياً
+    if (searchQuery !== "") {
+        if (tabsWrapper) tabsWrapper.classList.remove("hidden-controls");
+        
+        const filtered = menuItems.filter(item => {
+            return item.name.toLowerCase().includes(searchQuery) || 
+                   item.desc.toLowerCase().includes(searchQuery) ||
+                   item.tag.toLowerCase().includes(searchQuery);
+        });
 
-    if(filtered.length === 0) {
-        grid.innerHTML = "";
-        noResults.classList.remove("hidden");
+        if(filtered.length === 0) {
+            grid.innerHTML = "";
+            noResults.classList.remove("hidden");
+            return;
+        }
+
+        noResults.classList.add("hidden");
+        grid.innerHTML = renderFoodItems(filtered);
         return;
     }
 
+    // حالة عدم اختيار أي صنف: عرض الأصناف ككروت كبيرة
+    if (currentCategory === null) {
+        if (tabsWrapper) tabsWrapper.classList.add("hidden-controls");
+        noResults.classList.add("hidden");
+
+        grid.innerHTML = categories.map(cat => {
+            const count = menuItems.filter(item => item.category === cat.id).length;
+            return `
+                <div class="category-card" onclick="selectCategory('${cat.id}')" style="--cat-border: ${cat.border}; --cat-bg: ${cat.bg}">
+                    <div class="category-card-icon">
+                        <i class="${cat.icon}"></i>
+                    </div>
+                    <h3 class="category-card-title">${cat.name}</h3>
+                    <span class="category-card-count">${count} وجبة</span>
+                </div>
+            `;
+        }).join('');
+        return;
+    }
+
+    // حالة اختيار صنف محدد
+    if (tabsWrapper) tabsWrapper.classList.remove("hidden-controls");
     noResults.classList.add("hidden");
 
-    grid.innerHTML = filtered.map(item => {
-        // تنسيق السعر
+    const filtered = menuItems.filter(item => item.category === currentCategory);
+
+    // إضافة كرت العودة للأصناف
+    let html = `
+        <div class="back-card" onclick="selectCategory(null)">
+            <i class="fa-solid fa-arrow-right"></i>
+            <h3>الرجوع للأصناف</h3>
+            <p>اضغط للعودة إلى الأقسام الرئيسية</p>
+        </div>
+    `;
+
+    html += renderFoodItems(filtered);
+    grid.innerHTML = html;
+}
+
+// توليد كروت الوجبات بدون صور (Text-Only)
+function renderFoodItems(items) {
+    return items.map(item => {
         const formattedPrice = item.price > 0 
             ? `${item.price.toLocaleString('ar-IQ')} د.ع` 
             : "حسب الطلب";
         
         return `
-            <div class="menu-card" data-category="${item.category}">
-                <div class="menu-card-top">
-                    <span class="food-badge ${item.category}">${categories.find(c => c.id === item.category).name}</span>
-                    <i class="${item.icon} menu-card-icon"></i>
-                    <span class="price-badge">${formattedPrice}</span>
-                </div>
+            <div class="menu-card text-only" data-category="${item.category}">
                 <div class="menu-card-body">
-                    <h3 class="menu-card-title">${item.name}</h3>
+                    <div class="menu-card-header-row">
+                        <h3 class="menu-card-title">${item.name}</h3>
+                        <span class="menu-card-price">${formattedPrice}</span>
+                    </div>
                     <p class="menu-card-desc">${item.desc}</p>
-                    <span class="hero-badge" style="font-size: 0.75rem; margin-bottom: 10px; border-color: rgba(73,93,67,0.3); color: var(--color-secondary); align-self: flex-start; background: rgba(73,93,67,0.05);">
-                        ${item.tag}
-                    </span>
+                    <div class="menu-card-meta-row">
+                        <span class="hero-badge" style="font-size: 0.75rem; border-color: rgba(73,93,67,0.3); color: var(--color-secondary); background: rgba(73,93,67,0.05); margin-bottom: 0;">
+                            ${item.tag}
+                        </span>
+                        <span class="category-tag-small">${categories.find(c => c.id === item.category).name}</span>
+                    </div>
                     <div class="menu-card-footer">
                         <button class="add-to-cart-btn" onclick="addToCart('${item.id}')">
                             إضافة للسلة <i class="fa-solid fa-cart-plus"></i>
